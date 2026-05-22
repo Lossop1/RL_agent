@@ -5,8 +5,7 @@ config/ssh.json
 # 运行时产物
 sessions/
 state/
-data/snapshots/
-data/remote_*_buffer*
+data/
 __pycache__/
 *.pyc
 *.pyo
