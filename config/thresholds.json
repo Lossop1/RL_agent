@@ -1,0 +1,36 @@
+{
+    "penalty_dominant": {
+        "share_center": 0.30,
+        "entropy_drop_ratio": 0.35,
+        "sigmoid_k": 15,
+        "share_weight": 0.6,
+        "entropy_weight": 0.4
+    },
+    "high_reward_poor_performance": {
+        "both_high_ratio_center": 0.30,
+        "pos_neg_ratio_center": 1.2,
+        "sigmoid_k": 12
+    },
+    "exploration_collapse": {
+        "entropy_ratio_limit": 0.15,
+        "stagnant_window": 50,
+        "sigmoid_k": 20
+    },
+    "gait_degradation": {
+        "min_stage_for_check": ["curriculum_advancing", "complex_terrain", "fine_tuning"],
+        "sigmoid_k": 10
+    },
+    "curriculum_stuck": {
+        "terrain_change_threshold": 0.3,
+        "error_center": 0.60,
+        "sigmoid_k": 12
+    },
+    "stability_crisis": {
+        "time_out_center": 0.95,
+        "sigmoid_k": 25
+    },
+    "success_evaluation": {
+        "significant_change_ratio": 0.02,
+        "max_side_effects_allowed": 1
+    }
+}

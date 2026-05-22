@@ -1,0 +1,14 @@
+# 统一换行符处理
+* text=auto
+
+# 源码
+*.py text eol=lf
+*.md text
+*.json text
+*.yaml text
+*.yml text
+
+# 二进制
+*.db binary
+*.pt binary
+*.pth binary

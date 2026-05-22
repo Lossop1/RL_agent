@@ -1,0 +1,8 @@
+{
+  "ssh_host": "远程服务器IP",
+  "ssh_port": 22,
+  "ssh_user": "root",
+  "ssh_pass": "远程服务器密码",
+  "shell_init": "source /opt/conda/etc/profile.d/conda.sh",
+  "work_dir": "/root/robot_lab"
+}

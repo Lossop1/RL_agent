@@ -1,0 +1,4 @@
+{
+  "snapshots_dir": "data/snapshots",
+  "log_buffer_name": "log_buffer.json"
+}

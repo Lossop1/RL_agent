@@ -1,0 +1,28 @@
+# 敏感配置（含 api_key 和 ssh_pass，绝对不能提交）
+config/llm.json
+config/ssh.json
+
+# 运行时产物
+sessions/
+state/
+data/snapshots/
+data/remote_*_buffer*
+__pycache__/
+*.pyc
+*.pyo
+
+# Claude Code 本地设置
+.claude/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# OS
+.DS_Store

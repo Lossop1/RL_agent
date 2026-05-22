@@ -1,0 +1,273 @@
+{
+    "conflicts": [
+        ["track_lin_vel_xy_exp", "joint_torques_l2"],
+        ["track_lin_vel_xy_exp", "action_rate_l2"],
+        ["feet_air_time", "feet_slide"],
+        ["upward", "stand_still"],
+        ["joint_acc_l2", "track_ang_vel_z_exp"]
+    ],
+    "synergies": [
+        ["upward", "ang_vel_xy_l2"],
+        ["joint_acc_l2", "action_rate_l2"],
+        ["feet_gait", "feet_air_time"],
+        ["joint_torques_l2", "joint_power"]
+    ],
+    "hierarchy": {
+        "joint_pos_penalty": ["feet_gait", "feet_slide", "track_lin_vel_xy_exp"],
+        "action_rate_l2": ["track_lin_vel_xy_exp", "track_ang_vel_z_exp"]
+    },
+    "effect_directions": {
+        "decrease_joint_pos_penalty": {
+            "primary": [
+                {"metric": "entropy", "expected": "increase"},
+                {"metric": "error_vel_xy", "expected": "decrease"},
+                {"metric": "feet_gait", "expected": "improve"},
+                {"metric": "feet_slide", "expected": "decrease"}
+            ],
+            "side_effects": [
+                {"metric": "joint_acc_l2", "expected": "increase"},
+                {"metric": "joint_torques_l2", "expected": "may_increase"},
+                {"metric": "joint_pos_limits", "expected": "may_increase"}
+            ],
+            "magnitude": "large",
+            "note": "释放关节自由度。层级依赖：下游 feet_gait/feet_slide/track 会受益"
+        },
+        "increase_joint_pos_penalty": {
+            "primary": [
+                {"metric": "joint_pos_limits", "expected": "decrease"},
+                {"metric": "动作幅度", "expected": "constrain"}
+            ],
+            "side_effects": [
+                {"metric": "entropy", "expected": "decrease"},
+                {"metric": "error_vel_xy", "expected": "may_increase"},
+                {"metric": "feet_gait", "expected": "may_degrade"}
+            ],
+            "magnitude": "large",
+            "note": "收紧关节空间。层级依赖：会压制下游步态和速度跟踪"
+        },
+        "decrease_action_rate_l2": {
+            "primary": [
+                {"metric": "track_response", "expected": "improve"},
+                {"metric": "error_vel_xy", "expected": "decrease"},
+                {"metric": "error_vel_yaw", "expected": "decrease"}
+            ],
+            "side_effects": [
+                {"metric": "joint_acc_l2", "expected": "increase"},
+                {"metric": "smoothness", "expected": "degrade"},
+                {"metric": "action_noise", "expected": "increase"}
+            ],
+            "magnitude": "moderate",
+            "note": "放开动作变化速率。冲突对：与 track 奖励协同但与平滑性冲突"
+        },
+        "increase_action_rate_l2": {
+            "primary": [
+                {"metric": "smoothness", "expected": "improve"},
+                {"metric": "joint_acc_l2", "expected": "decrease"}
+            ],
+            "side_effects": [
+                {"metric": "track_response", "expected": "degrade"},
+                {"metric": "error_vel_xy", "expected": "may_increase"}
+            ],
+            "magnitude": "moderate",
+            "note": "增强动作平滑约束。冲突对联动时作为保护项使用"
+        },
+        "increase_track_lin_vel_xy_exp": {
+            "primary": [
+                {"metric": "error_vel_xy", "expected": "decrease"}
+            ],
+            "side_effects": [
+                {"metric": "joint_torques_l2", "expected": "increase"},
+                {"metric": "action_rate_l2", "expected": "increase"},
+                {"metric": "joint_power", "expected": "increase"}
+            ],
+            "magnitude": "moderate",
+            "note": "冲突对：与 joint_torques 和 action_rate 冲突，需联动"
+        },
+        "decrease_track_lin_vel_xy_exp": {
+            "primary": [
+                {"metric": "joint_torques_l2", "expected": "decrease"},
+                {"metric": "joint_power", "expected": "decrease"}
+            ],
+            "side_effects": [
+                {"metric": "error_vel_xy", "expected": "may_increase"}
+            ],
+            "magnitude": "moderate",
+            "note": "降低速度追求。冲突对联动时使用，或速度已达标但能耗过高时"
+        },
+        "increase_track_ang_vel_z_exp": {
+            "primary": [
+                {"metric": "error_vel_yaw", "expected": "decrease"}
+            ],
+            "side_effects": [
+                {"metric": "joint_acc_l2", "expected": "increase"},
+                {"metric": "ang_vel_xy_l2", "expected": "may_increase"}
+            ],
+            "magnitude": "moderate",
+            "note": "增强转向跟踪。冲突对：与 joint_acc_l2 冲突"
+        },
+        "decrease_track_ang_vel_z_exp": {
+            "primary": [
+                {"metric": "joint_acc_l2", "expected": "decrease"}
+            ],
+            "side_effects": [
+                {"metric": "error_vel_yaw", "expected": "may_increase"}
+            ],
+            "magnitude": "small",
+            "note": "降低转向要求。转向已达标但关节加速度过高时使用"
+        },
+        "increase_feet_gait": {
+            "primary": [
+                {"metric": "feet_gait", "expected": "improve"},
+                {"metric": "feet_air_time", "expected": "improve"}
+            ],
+            "side_effects": [
+                {"metric": "feet_slide", "expected": "may_increase"},
+                {"metric": "feet_air_time_variance", "expected": "may_increase"}
+            ],
+            "magnitude": "moderate",
+            "note": "协同对：与 feet_air_time 协同。冲突对：与 feet_slide 冲突"
+        },
+        "decrease_feet_gait": {
+            "primary": [
+                {"metric": "feet_slide", "expected": "decrease"}
+            ],
+            "side_effects": [
+                {"metric": "feet_gait", "expected": "degrade"}
+            ],
+            "magnitude": "small",
+            "note": "降低步态要求。步态已达标但滑动惩罚过高时使用"
+        },
+        "increase_feet_slide": {
+            "primary": [
+                {"metric": "feet_slide", "expected": "decrease"}
+            ],
+            "side_effects": [
+                {"metric": "feet_air_time", "expected": "may_decrease"},
+                {"metric": "feet_height_body", "expected": "may_decrease"}
+            ],
+            "magnitude": "moderate",
+            "note": "增强防滑动惩罚。冲突对：与 feet_air_time 冲突"
+        },
+        "increase_feet_air_time": {
+            "primary": [
+                {"metric": "feet_air_time", "expected": "improve"},
+                {"metric": "feet_gait", "expected": "improve"}
+            ],
+            "side_effects": [
+                {"metric": "feet_slide", "expected": "may_increase"}
+            ],
+            "magnitude": "moderate",
+            "note": "协同对：与 feet_gait 协同。冲突对：与 feet_slide 冲突"
+        },
+        "increase_upward": {
+            "primary": [
+                {"metric": "stability", "expected": "improve"},
+                {"metric": "ang_vel_xy_l2", "expected": "decrease"}
+            ],
+            "side_effects": [
+                {"metric": "stand_still", "expected": "risk_of_cheating"}
+            ],
+            "magnitude": "moderate",
+            "note": "协同对：与 ang_vel_xy_l2 协同。冲突对：与 stand_still 冲突，需同步增强 stand_still 防止作弊"
+        },
+        "decrease_upward": {
+            "primary": [
+                {"metric": "避免过度直立约束", "expected": "relax"}
+            ],
+            "side_effects": [
+                {"metric": "stability", "expected": "may_degrade"}
+            ],
+            "magnitude": "small",
+            "note": "降低直立要求。仅在 upward 过高导致作弊或过度约束时使用"
+        },
+        "increase_stand_still": {
+            "primary": [
+                {"metric": "防止静止作弊", "expected": "effective"},
+                {"metric": "track_lin_vel_xy_exp", "expected": "可能恢复有效"}
+            ],
+            "side_effects": [
+                {"metric": "upward 的有效性", "expected": "被制衡"}
+            ],
+            "magnitude": "moderate",
+            "note": "冲突对：与 upward 冲突。策略作弊时优先使用，而非降 upward"
+        },
+        "increase_ang_vel_xy_l2": {
+            "primary": [
+                {"metric": "ang_vel_xy_l2", "expected": "decrease"},
+                {"metric": "stability", "expected": "improve"}
+            ],
+            "side_effects": [
+                {"metric": "转向响应", "expected": "may_degrade"}
+            ],
+            "magnitude": "moderate",
+            "note": "协同对：与 upward 协同增强稳定性"
+        },
+        "decrease_ang_vel_xy_l2": {
+            "primary": [
+                {"metric": "转向灵活性", "expected": "improve"}
+            ],
+            "side_effects": [
+                {"metric": "stability", "expected": "may_degrade"}
+            ],
+            "magnitude": "small",
+            "note": "放宽晃动约束。仅在稳定性已很好但转向不足时使用"
+        },
+        "increase_joint_torques_l2": {
+            "primary": [
+                {"metric": "joint_torques_l2", "expected": "decrease"},
+                {"metric": "joint_power", "expected": "decrease"}
+            ],
+            "side_effects": [
+                {"metric": "error_vel_xy", "expected": "may_increase"},
+                {"metric": "action_rate_l2", "expected": "may_decrease"}
+            ],
+            "magnitude": "moderate",
+            "note": "协同对：与 joint_power 协同。冲突对：与 track_lin_vel_xy 冲突"
+        },
+        "increase_joint_acc_l2": {
+            "primary": [
+                {"metric": "joint_acc_l2", "expected": "decrease"},
+                {"metric": "smoothness", "expected": "improve"}
+            ],
+            "side_effects": [
+                {"metric": "error_vel_yaw", "expected": "may_increase"},
+                {"metric": "track_response", "expected": "may_degrade"}
+            ],
+            "magnitude": "moderate",
+            "note": "协同对：与 action_rate_l2 协同。冲突对：与 track_ang_vel_z 冲突"
+        },
+        "increase_joint_power": {
+            "primary": [
+                {"metric": "joint_power", "expected": "decrease"}
+            ],
+            "side_effects": [
+                {"metric": "joint_torques_l2", "expected": "decrease"}
+            ],
+            "magnitude": "small",
+            "note": "协同对：与 joint_torques_l2 协同"
+        },
+        "decrease_all_penalties": {
+            "primary": [
+                {"metric": "entropy", "expected": "increase"},
+                {"metric": "exploration", "expected": "improve"}
+            ],
+            "side_effects": [
+                {"metric": "短期动作粗糙", "expected": "temporary"},
+                {"metric": "reward 可能短期下降", "expected": "temporary"}
+            ],
+            "magnitude": "large",
+            "note": "整体松绑。仅用于早期探索严重不足（entropy < 初始 15%）"
+        },
+        "decrease_terrain_levels": {
+            "primary": [
+                {"metric": "time_out_rate", "expected": "increase"},
+                {"metric": "stability", "expected": "improve"}
+            ],
+            "side_effects": [
+                {"metric": "课程进度", "expected": "temporarily_slower"}
+            ],
+            "magnitude": "large",
+            "note": "回退课程难度。稳定性危机时使用，给策略更多时间适应"
+        }
+    }
+}

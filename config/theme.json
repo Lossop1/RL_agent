@@ -1,0 +1,53 @@
+{
+  "colors": {
+    "gray": "\u001b[90m",
+    "red": "\u001b[31m",
+    "green": "\u001b[32m",
+    "yellow": "\u001b[33m",
+    "blue": "\u001b[34m",
+    "bright_blue": "\u001b[94m",
+    "cyan": "\u001b[96m",
+    "magenta": "\u001b[95m",
+    "italic": "\u001b[3m",
+    "bold": "\u001b[1m",
+    "reset": "\u001b[0m"
+  },
+  "symbols": {
+    "hr_char": "-",
+    "hr_length": 54,
+    "prompt": "  > ",
+    "prompt_confirm": "  确认? [y/N]: ",
+    "prompt_delete": "  删除哪个? "
+  },
+  "tags": {
+    "think": {
+      "prefix": "[思考]",
+      "color": "bright_blue",
+      "italic": true
+    },
+    "info": {
+      "prefix": "[INFO]",
+      "color": "green"
+    },
+    "error": {
+      "prefix": "[ERROR]",
+      "color": "red"
+    },
+    "progress": {
+      "prefix": "[PROGRESS]",
+      "color": "cyan"
+    },
+    "diagnosis": {
+      "prefix": "[DIAGNOSIS]",
+      "color": "yellow"
+    },
+    "ask": {
+      "prefix": "[ASK]",
+      "color": "magenta"
+    },
+    "done": {
+      "prefix": "[DONE]",
+      "color": "green"
+    }
+  }
+}

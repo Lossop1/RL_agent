@@ -1,0 +1,6 @@
+{
+  "api_key": "sk-xxx 或填入 api_key_env_var 从环境变量读取",
+  "base_url": "https://api.deepseek.com",
+  "model": "deepseek-v4-flash",
+  "max_turns": 10000
+}

@@ -1,0 +1,106 @@
+{
+    "iteration_pattern": "Learning iteration (\\d+)/(\\d+)",
+    "field_pattern": "^\\s*([\\w\\s/]+):\\s*([-\\d.]+)",
+    "exclude_keywords": [
+        "Computation", "Total timesteps", "Iteration time",
+        "Time elapsed", "ETA"
+    ],
+    "clusters": {
+        "velocity_tracking": {
+            "members": [
+                "Episode_Reward/track_lin_vel_xy_exp",
+                "Episode_Reward/track_ang_vel_z_exp",
+                "Episode_Reward/stand_still"
+            ],
+            "direction": "higher_better",
+            "description": "速度跟踪能力"
+        },
+        "stability": {
+            "members": [
+                "Episode_Reward/upward",
+                "Episode_Reward/ang_vel_xy_l2",
+                "Episode_Reward/lin_vel_z_l2"
+            ],
+            "direction": "higher_better",
+            "description": "身体稳定性"
+        },
+        "energy_efficiency": {
+            "members": [
+                "Episode_Reward/joint_torques_l2",
+                "Episode_Reward/joint_power",
+                "Episode_Reward/joint_acc_l2"
+            ],
+            "direction": "lower_better",
+            "description": "能耗效率"
+        },
+        "gait_quality": {
+            "members": [
+                "Episode_Reward/feet_gait",
+                "Episode_Reward/feet_air_time",
+                "Episode_Reward/feet_air_time_variance",
+                "Episode_Reward/feet_slide",
+                "Episode_Reward/feet_height_body"
+            ],
+            "direction": "higher_better",
+            "description": "步态质量"
+        },
+        "smoothness": {
+            "members": [
+                "Episode_Reward/action_rate_l2",
+                "Episode_Reward/joint_acc_l2"
+            ],
+            "direction": "lower_better",
+            "description": "动作平滑度"
+        },
+        "constraint_violation": {
+            "members": [
+                "Episode_Reward/joint_pos_limits",
+                "Episode_Reward/joint_pos_penalty",
+                "Episode_Reward/undesired_contacts",
+                "Episode_Reward/contact_forces"
+            ],
+            "direction": "lower_better",
+            "description": "约束违反程度"
+        }
+    },
+    "trend_fields": [
+        "Mean reward",
+        "Mean entropy loss",
+        "Mean action noise std",
+        "Episode_Reward/track_lin_vel_xy_exp",
+        "Episode_Reward/track_ang_vel_z_exp",
+        "Episode_Reward/upward",
+        "Episode_Reward/feet_gait",
+        "Episode_Reward/joint_pos_penalty",
+        "Episode_Reward/action_rate_l2",
+        "Episode_Reward/joint_acc_l2",
+        "Episode_Reward/feet_slide",
+        "Episode_Reward/ang_vel_xy_l2",
+        "Curriculum/terrain_levels",
+        "Metrics/base_velocity/error_vel_xy",
+        "Metrics/base_velocity/error_vel_yaw",
+        "Episode_Termination/time_out"
+    ],
+    "correlation_pairs": [
+        ["Mean entropy loss", "Mean reward"],
+        ["Episode_Reward/track_lin_vel_xy_exp", "Metrics/base_velocity/error_vel_xy"],
+        ["Episode_Reward/track_ang_vel_z_exp", "Metrics/base_velocity/error_vel_yaw"],
+        ["Episode_Reward/joint_pos_penalty", "Metrics/base_velocity/error_vel_xy"],
+        ["Episode_Reward/action_rate_l2", "Metrics/base_velocity/error_vel_xy"],
+        ["Episode_Reward/feet_gait", "Metrics/base_velocity/error_vel_xy"],
+        ["Episode_Reward/feet_slide", "Metrics/base_velocity/error_vel_xy"],
+        ["Episode_Reward/upward", "Episode_Reward/ang_vel_xy_l2"],
+        ["Episode_Reward/joint_torques_l2", "Episode_Reward/joint_acc_l2"],
+        ["Curriculum/terrain_levels", "Episode_Reward/feet_gait"],
+        ["Curriculum/terrain_levels", "Metrics/base_velocity/error_vel_xy"],
+        ["Mean action noise std", "Mean entropy loss"]
+    ],
+    "partial_correlation_rules": [
+        ["Episode_Reward/track_lin_vel_xy_exp", "Metrics/base_velocity/error_vel_xy", "Episode_Reward/joint_pos_penalty"],
+        ["Episode_Reward/track_lin_vel_xy_exp", "Metrics/base_velocity/error_vel_xy", "Curriculum/terrain_levels"],
+        ["Episode_Reward/feet_gait", "Metrics/base_velocity/error_vel_xy", "Curriculum/terrain_levels"],
+        ["Episode_Reward/action_rate_l2", "Metrics/base_velocity/error_vel_xy", "Episode_Reward/joint_pos_penalty"],
+        ["Mean entropy loss", "Mean reward", "Episode_Reward/joint_pos_penalty"],
+        ["Episode_Reward/feet_slide", "Metrics/base_velocity/error_vel_xy", "Curriculum/terrain_levels"]
+    ]
+}

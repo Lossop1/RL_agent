@@ -1,0 +1,57 @@
+{
+    "decrease_penalty": {
+        "min_rounds": 30,
+        "optimal_rounds": 50,
+        "reason": "惩罚降低后动作空间立即释放，策略在20-30轮内就能探索新动作"
+    },
+    "increase_penalty": {
+        "min_rounds": 30,
+        "optimal_rounds": 50,
+        "reason": "惩罚增强后策略会快速收缩动作范围以避免惩罚"
+    },
+    "increase_reward": {
+        "min_rounds": 50,
+        "optimal_rounds": 100,
+        "reason": "奖励权重改变后策略需要更长时间学习新的值函数"
+    },
+    "decrease_reward": {
+        "min_rounds": 40,
+        "optimal_rounds": 80,
+        "reason": "奖励降低后旧的高奖励策略仍有惯性，需要时间消退"
+    },
+    "decrease_all_penalties": {
+        "min_rounds": 40,
+        "optimal_rounds": 80,
+        "reason": "整体松绑后策略需要时间探索新空间，但比单奖励调整快"
+    },
+    "increase_stability": {
+        "min_rounds": 20,
+        "optimal_rounds": 40,
+        "reason": "upward/ang_vel 等稳定性项直接影响动作输出，见效快"
+    },
+    "conflict_pair_linked": {
+        "min_rounds": 40,
+        "optimal_rounds": 80,
+        "reason": "冲突对联动调整涉及两个参数，策略需要同时适应双向变化"
+    },
+    "synergy_group_micro": {
+        "min_rounds": 50,
+        "optimal_rounds": 100,
+        "reason": "协同组微调幅度小(10-15%)，效果累积慢，需要更长时间观察"
+    },
+    "curriculum_rollback": {
+        "min_rounds": 20,
+        "optimal_rounds": 40,
+        "reason": "课程难度回退后行为立即简化，time_out_rate应快速恢复"
+    },
+    "modify_reward_shape": {
+        "min_rounds": 80,
+        "optimal_rounds": 150,
+        "reason": "奖励函数形式改变（温度、基底、条件触发）需要值函数重新拟合"
+    },
+    "default": {
+        "min_rounds": 40,
+        "optimal_rounds": 80,
+        "reason": "通用观察窗口"
+    }
+}
