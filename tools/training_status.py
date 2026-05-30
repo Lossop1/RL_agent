@@ -181,6 +181,19 @@ def execute(log_file: str, tensorboard_dir: str = None,
     nan_detected = bool(re.search(r"\bnan\b|\binf\b", log_tail, re.IGNORECASE))
     iterations = _parse_cusrl_iterations(log_tail)
 
+    # 4a. Parse reward components from log lines like `key = value`
+    components = {}
+    for line in log_tail.split("\n"):
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        m = re.match(r"([A-Za-z_/]+)\s*=\s*([0-9.\-+eE]+)", line)
+        if m:
+            try:
+                components[m.group(1)] = float(m.group(2))
+            except ValueError:
+                pass
+
     result = {
         "latest_reward":       latest_reward,
         "step":                step,
@@ -189,6 +202,7 @@ def execute(log_file: str, tensorboard_dir: str = None,
         "log_mtime_age_sec":   log_mtime_age_sec,
         "log_tail":            log_tail[-2000:] if log_tail else "",
         "iterations":          iterations,
+        "components":          components,
         "tensorboard_metrics": None,
         "error":               None,
     }

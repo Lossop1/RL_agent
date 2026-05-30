@@ -51,13 +51,18 @@ TOOL = {
             "type": "str", "required": False,
             "desc": "快照目录。传此参数时会做调参前后效果对比。"
         },
+        "deep": {
+            "type": "bool", "required": False,
+            "desc": "是否返回深度分析数据（变点、事件关联、异常检测等）。默认 false。深度数据始终写入快照文件。"
+        },
     }
 }
 
 
 def execute(log_path: str, total_iterations: int = None,
             log_format: str = "isaac_rl", remote: bool = False,
-            data_dir: str = None, _control: dict = None) -> dict:
+            data_dir: str = None, deep: bool = False,
+            _control: dict = None) -> dict:
     """执行完整训练分析（parse_log + deep_dig）。"""
     try:
         # ── 1. 获取日志 ──
@@ -131,14 +136,17 @@ def execute(log_path: str, total_iterations: int = None,
                 )
 
         # ── 5. 标记 rebuttal 闸门 ──
+        result = {
+            "summary": parse_result.get("summary", {}),
+            "snapshot_path": snapshot_path,
+        }
+        if deep:
+            result["deep"] = deep_result
+
         if _control is not None:
             _control["_pending_rebuttal"] = True
 
-        return _clean_for_json({
-            "summary": parse_result.get("summary", {}),
-            "deep": deep_result,
-            "snapshot_path": snapshot_path,
-        })
+        return _clean_for_json(result)
 
     except Exception as e:
         import traceback
