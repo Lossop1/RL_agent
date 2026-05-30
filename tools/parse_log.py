@@ -955,7 +955,7 @@ def compute_all(buffer, windows, format_config, total_iter, availability=None):
 
 
 def execute(log_path: str, total_iterations: int = None, log_format: str = "isaac_rl",
-            output: str = None, remote: bool = False) -> dict:
+            output: str = None, remote: bool = False, _control: dict = None) -> dict:
     try:
         if remote:
             log_path = _fetch_remote_log(log_path, TAIL_LINES)
@@ -1007,6 +1007,8 @@ def execute(log_path: str, total_iterations: int = None, log_format: str = "isaa
             with open(output, 'w', encoding='utf-8') as f:
                 json.dump(result, f, indent=2, ensure_ascii=False)
 
+        if _control is not None:
+            _control["_pending_rebuttal"] = True
         return result.get("summary", {})
 
     except Exception as e:

@@ -102,7 +102,11 @@ def execute(remote_path, modifications, timestamp, round=1, _control=None):
     """
     context_stack = _control.get("context_stack", []) if _control else []
 
-    # ── 0. 权限检查 ──
+    # ── 0. Rebuttal 闸门 ──
+    if _control and _control.get("_pending_rebuttal"):
+        return {"error": "诊断后必须先 switch_context 到 rebuttal 验证。tuner 被拒绝执行。"}
+
+    # ── 1. 权限检查 ──
     try:
         _check_permission(remote_path, modifications, context_stack)
     except PermissionError as e:
@@ -114,7 +118,7 @@ def execute(remote_path, modifications, timestamp, round=1, _control=None):
     except Exception as e:
         return {"error": f"终止训练进程失败: {e}"}
 
-    # ── 2. 备份远程文件到本地 ──
+    # ── 2. 备份（本地 + 远程） ──
     try:
         content = _ssh_exec(f"cat {remote_path}", timeout=10)
     except Exception as e:
@@ -128,20 +132,54 @@ def execute(remote_path, modifications, timestamp, round=1, _control=None):
     except Exception as e:
         return {"error": f"写入本地快照失败: {e}"}
 
+    # 远程备份（用于回滚，避免本地路径在远程不可用）
+    remote_bak = f"{remote_path}.bak"
+    _ssh_exec(f"cp {remote_path} {remote_bak}", timeout=10)
+
     # ── 3. 逐条修改 ──
     changed = []
     try:
         for mod in modifications:
-            # 转义特殊字符（负号、小数点）
             field = mod["field"].replace(".", "\\.")
-            old = str(mod["old_value"]).replace("-", "\\-").replace(".", "\\.")
-            new = str(mod["new_value"]).replace("-", "\\-").replace(".", "\\.")
-            sed_cmd = f"sed -i 's/{field} = {old}/{field} = {new}/' {remote_path}"
-            _ssh_exec(sed_cmd, timeout=10)
+            # 处理科学计数法格式差异：-2.975e-07 vs -2.975e-7
+            old_raw = str(mod["old_value"])
+            new_raw = str(mod["new_value"])
+            # 生成两种格式：e-07 和 e-7
+            old_variants = [old_raw]
+            if "e-" in old_raw:
+                # 去掉指数补零
+                old_variants.append(re.sub(r"e-0(\d+)$", r"e-\1", old_raw))
+                # 补零到3位指数
+                old_variants.append(re.sub(r"e-(\d+)$", lambda m: f"e-{int(m.group(1)):03d}", old_raw))
+            new_variants = [new_raw]
+            if "e-" in new_raw:
+                new_variants.append(re.sub(r"e-0(\d+)$", r"e-\1", new_raw))
+                new_variants.append(re.sub(r"e-(\d+)$", lambda m: f"e-{int(m.group(1)):03d}", new_raw))
+            # 去重
+            old_variants = list(dict.fromkeys(old_variants))
+            new_variants = list(dict.fromkeys(new_variants))
+            # 尝试每种 old 格式匹配
+            matched = False
+            for ov in old_variants:
+                escaped_old = ov.replace("-", "\\-").replace(".", "\\.")
+                for nv in new_variants:
+                    escaped_new = nv.replace("-", "\\-").replace(".", "\\.")
+                    sed_cmd = f"sed -i 's/{field} = {escaped_old}/{field} = {escaped_new}/' {remote_path}"
+                    _ssh_exec(sed_cmd, timeout=10)
+                    # 验证是否真的改了
+                    check = _ssh_exec(f"grep '{mod['field']}' {remote_path}", timeout=10)
+                    if nv in check:
+                        matched = True
+                        break
+                if matched:
+                    break
+            if not matched:
+                raise ValueError(f"无法匹配字段 {mod['field']} 的旧值 {old_raw}")
             changed.append(mod)
     except Exception as e:
-        # 回滚
-        _ssh_exec(f"cat > {remote_path} < {snapshot_path}", timeout=10)
+        # 回滚（用远程备份）
+        _ssh_exec(f"cp {remote_bak} {remote_path}", timeout=10)
+        _ssh_exec(f"rm -f {remote_bak}", timeout=10)
         return {"error": f"修改失败，已回滚。失败于: {mod.get('field', 'unknown')}, 错误: {e}"}
 
     # ── 4. 验证 ──
@@ -149,15 +187,25 @@ def execute(remote_path, modifications, timestamp, round=1, _control=None):
     for mod in modifications:
         try:
             result = _ssh_exec(f"grep '{mod['field']}' {remote_path}", timeout=10)
-            if str(mod["new_value"]) not in result:
-                failed.append(mod["field"])
+            new_raw = str(mod["new_value"])
+            if new_raw not in result:
+                # 也检查补零格式
+                alt_new = re.sub(r"e-0(\d+)$", r"e-\1", new_raw) if "e-" in new_raw else None
+                if alt_new and alt_new not in result:
+                    failed.append(mod["field"])
+                elif not alt_new:
+                    failed.append(mod["field"])
         except Exception:
             failed.append(mod["field"])
 
     if failed:
-        # 回滚
-        _ssh_exec(f"cat > {remote_path} < {snapshot_path}", timeout=10)
+        # 回滚（用远程备份）
+        _ssh_exec(f"cp {remote_bak} {remote_path}", timeout=10)
+        _ssh_exec(f"rm -f {remote_bak}", timeout=10)
         return {"error": f"验证失败: {failed}，已回滚"}
+
+    # 清理远程备份
+    _ssh_exec(f"rm -f {remote_bak}", timeout=10)
 
     # ── 5. 返回结果 ──
     return {

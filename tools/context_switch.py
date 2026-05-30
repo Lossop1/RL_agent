@@ -8,7 +8,7 @@ import json
 import os
 
 # 合法的子 agent 上下文名称
-VALID_CONTEXTS = {"meta", "rectify", "training", "env_setup"}
+VALID_CONTEXTS = {"meta", "rectify", "training", "env_setup", "data_get", "data_parse", "rebuttal"}
 
 TOOL = {
     "name": "switch_context",
@@ -31,6 +31,40 @@ TOOL = {
 }
 
 
+def _reset_context(contexts: dict, context_name: str) -> None:
+    """Reset (clear and recreate) a context with skill prompt and rules."""
+    skill_path = f"prompts/skills/{context_name}.md"
+    skill_content = ""
+    try:
+        with open(skill_path, "r", encoding="utf-8") as f:
+            skill_content = f.read()
+    except FileNotFoundError:
+        pass
+
+    rules_parts = []
+    general_rules_path = "prompts/rules/general.md"
+    try:
+        with open(general_rules_path, "r", encoding="utf-8") as f:
+            rules_parts.append(f.read())
+    except FileNotFoundError:
+        pass
+
+    context_rules_path = f"prompts/rules/{context_name}.md"
+    try:
+        with open(context_rules_path, "r", encoding="utf-8") as f:
+            rules_parts.append(f.read())
+    except FileNotFoundError:
+        pass
+
+    rules_text = "\n\n".join(rules_parts)
+    system_text = skill_content or f"你是 {context_name} 助手。"
+    if rules_text:
+        system_text += "\n\n" + rules_text
+    contexts[context_name] = [
+        {"role": "system", "content": system_text},
+    ]
+
+
 def execute(context_name: str, info: str = "{}", _control: dict = None) -> dict:
     """Switch to a new context, pushing the current one onto the stack."""
     if _control is None:
@@ -45,42 +79,29 @@ def execute(context_name: str, info: str = "{}", _control: dict = None) -> dict:
     contexts = _control.get("contexts", {})
     context_stack = _control.get("context_stack", [])
 
+    # Capture caller before push (default meta when stack empty)
+    caller_ctx = context_stack[-1] if context_stack else "meta"
+
     # Always push to stack (even if context already exists)
     context_stack.append(context_name)
 
     if context_name not in contexts:
-        # Load skill file as system prompt
-        skill_path = f"prompts/skills/{context_name}.md"
-        skill_content = ""
-        try:
-            with open(skill_path, "r", encoding="utf-8") as f:
-                skill_content = f.read()
-        except FileNotFoundError:
-            pass
-
-        # Load rules for this context
-        rules_parts = []
-        general_rules_path = "prompts/rules/general.md"
-        try:
-            with open(general_rules_path, "r", encoding="utf-8") as f:
-                rules_parts.append(f.read())
-        except FileNotFoundError:
-            pass
-
-        context_rules_path = f"prompts/rules/{context_name}.md"
-        try:
-            with open(context_rules_path, "r", encoding="utf-8") as f:
-                rules_parts.append(f.read())
-        except FileNotFoundError:
-            pass
-
-        rules_text = "\n\n".join(rules_parts)
-        system_text = skill_content or f"你是 {context_name} 助手。"
-        if rules_text:
-            system_text += "\n\n" + rules_text
-        contexts[context_name] = [
-            {"role": "system", "content": system_text},
-        ]
+        _reset_context(contexts, context_name)
+    elif context_name in ("rebuttal", "data_parse"):
+        # Check if last tool message requested clear — ensures fresh context each invocation
+        msgs = contexts[context_name]
+        for m in reversed(msgs):
+            if m.get("role") == "tool":
+                try:
+                    content = json.loads(m["content"]) if isinstance(m["content"], str) else m["content"]
+                    if isinstance(content, dict) and content.get("result"):
+                        result_data = json.loads(content["result"]) if isinstance(content["result"], str) else content["result"]
+                        if isinstance(result_data, dict) and result_data.get("clear"):
+                            _reset_context(contexts, context_name)
+                    break
+                except (json.JSONDecodeError, TypeError, AttributeError):
+                    break
+            break
 
     # Append info as new user message (even if context already exists)
     if info:
@@ -90,8 +111,12 @@ def execute(context_name: str, info: str = "{}", _control: dict = None) -> dict:
             except json.JSONDecodeError:
                 pass
         contexts[context_name].append(
-            {"role": "user", "content": f"[来自 meta] 任务参数：{json.dumps(info, ensure_ascii=False)}"}
+            {"role": "user", "content": f"[来自 {caller_ctx}] 任务参数：{json.dumps(info, ensure_ascii=False)}"}
         )
+
+    if context_name == "rebuttal":
+        _control["_pending_rebuttal"] = False
+        _control["_rebuttal_reminder_injected"] = False
 
     return {"stdout": f"switched to ctx={context_name}", "stderr": ""}
 

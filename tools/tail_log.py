@@ -55,9 +55,18 @@ _procs: dict = {}  # window_title -> subprocess.Popen
 
 def execute(log_path: str, action: str, interval: int = 5, window_title: str = "tail_log") -> dict:
     if action == "start":
-        # Check if window already exists and is alive
-        if window_title in _procs and _procs[window_title].poll() is None:
-            return {"stdout": f"[tail_log] already monitoring (window={window_title})", "stderr": ""}
+        # 同 window_title 已存在 → 先杀掉
+        if window_title in _procs:
+            proc = _procs[window_title]
+            if proc.poll() is None:
+                try:
+                    if os.name == "nt":
+                        subprocess.run(f"taskkill /T /F /PID {proc.pid}", shell=True, capture_output=True)
+                    else:
+                        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+                except Exception:
+                    proc.kill()
+            del _procs[window_title]
 
         # Read SSH config
         ssh_cfg_path = Path(__file__).resolve().parent.parent / "config" / "ssh.json"
@@ -74,7 +83,6 @@ def execute(log_path: str, action: str, interval: int = 5, window_title: str = "
 
         viewer = Path(__file__).resolve().parent / "tail_log_viewer.py"
 
-        # 直接启动 viewer，不用 start 命令和 shell=True
         proc = subprocess.Popen(
             ["python", str(viewer),
              "--log-path", log_path,

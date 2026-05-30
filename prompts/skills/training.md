@@ -103,23 +103,33 @@ ssh_exec command="tmux has-session -t rl_train 2>&1" timeout=10
 ### A.2 找到日志路径
 **工具：ssh_exec | 位置：远程**
 
-**方法一**：从 tmux 输出提取 LOG_DIR：
+按优先级依次尝试三种方法，任一成功即继续。
+
+**方法一**：从 tmux 缓冲区提取 LOG_DIR（适用于日志仍在缓冲区中的场景）：
 
 ```
-ssh_exec command="tmux capture-pane -t rl_train -p -S -200 | grep -oP 'LOG_DIR=\K\S+' | tail -1" timeout=10
+ssh_exec command="tmux capture-pane -t rl_train -p -S -5000 | grep -oP 'LOG_DIR=\K\S+' | tail -1" timeout=10
 ```
 
 提取到值 → 作为 `log_timestamp`，跳到 A.3。
 
-**方法二**（方法一为空时）：通过进程信息推断：
+**方法二**（方法一为空时）：从 pipe-pane cat 进程的 fd 定位日志文件（适用于管道正在写入的场景，最可靠）：
 
 ```
-ssh_exec command="pid=$(pgrep -f 'train.py' | head -1); if [ -n \"$pid\" ]; then ls -l /proc/$pid/fd/ 2>/dev/null | grep 'train.log' | awk '{print $NF}' | head -1; fi" timeout=10
+ssh_exec command="for pid in \$(pgrep -f 'cat' 2>/dev/null); do t=\$(readlink /proc/\$pid/fd/1 2>/dev/null); if echo \"\$t\" | grep -q 'train\.log'; then echo \"\$t\"; break; fi; done" timeout=10
 ```
 
 提取到完整路径 → 作为 `log_path`，跳到 A.4。
 
-**两次都为空** → 返回错误：
+**方法三**（方法一和方法二都为空时）：按最近修改时间查找活跃日志文件（不受框架名影响）：
+
+```
+ssh_exec command="work_dir=\$(grep -oP '\"work_dir\"\s*:\s*\"\K[^\"]+' state/env_state.json 2>/dev/null || echo '/root/robot_lab'); find \$work_dir/logs/ -name 'train.log' -mmin -2 2>/dev/null | head -1" timeout=10
+```
+
+提取到完整路径 → 作为 `log_path`，跳到 A.4。
+
+**三种方法都为空** → 返回错误：
 ```
 pop_context(result='{"_task_id": "T001", "task_type": "training", "status": "error", "summary": "未能定位已有训练的日志路径"}')
 ```

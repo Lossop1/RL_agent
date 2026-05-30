@@ -77,6 +77,8 @@ CTX_DISPLAY = {
     "rectify": "rectify",
     "training": "training",
     "env_setup": "env_setup",
+        "data_get": "data_get",
+        "rebuttal": "rebuttal",
 }
 
 
@@ -341,6 +343,8 @@ def _new_control_state() -> Dict[str, Any]:
         "_session_id": None,
         "contexts": {},
         "context_stack": [],
+        "_pending_rebuttal": False,
+        "_rebuttal_reminder_injected": False,
     }
 
 
@@ -490,6 +494,26 @@ def _interactive_loop() -> None:
 
 def _interactive_input_loop(control: dict, worker: Optional[threading.Thread]) -> None:
     while True:
+        # Agent 运行时跳过 input，只处理确认框和 /exit
+        if control["running"].is_set():
+            pending = control.get("_pending_confirm")
+            if pending is not None:
+                try:
+                    resp = input(PROMPT_CONFIRM).strip().lower()
+                except (EOFError, KeyboardInterrupt):
+                    control["_confirm_result"] = False
+                    control["_pending_confirm"] = None
+                    continue
+                if resp in ("y", "yes"):
+                    control["_confirm_result"] = True
+                else:
+                    control["_confirm_result"] = False
+                control["_pending_confirm"] = None
+                continue
+            # Agent 运行中且无待处理确认框，短暂休眠避免忙等
+            time.sleep(0.1)
+            continue
+
         try:
             user_input = input(PROMPT).strip()
         except (EOFError, KeyboardInterrupt):
@@ -515,20 +539,6 @@ def _interactive_input_loop(control: dict, worker: Optional[threading.Thread]) -
 
         if user_input.startswith("/"):
             print(f"  未知命令: {user_input}")
-            continue
-
-        if control["running"].is_set():
-            pending = control.get("_pending_confirm")
-            if pending is not None:
-                resp = user_input.strip().lower()
-                if resp in ("y", "yes"):
-                    control["_confirm_result"] = True
-                    control["_pending_confirm"] = None
-                else:
-                    control["_confirm_result"] = False
-                    control["_pending_confirm"] = None
-                continue
-            control["pending_user_inputs"].put(user_input)
             continue
 
         worker = threading.Thread(target=_run_agent_worker, args=(user_input, control), daemon=True)
@@ -613,21 +623,28 @@ def run_agent(task_description: str, control: Optional[Dict[str, Any]] = None) -
     messages = contexts[active_ctx]
 
     CONTEXT_TOOLS = {
-        "meta": ["task_complete", "switch_context", "pop_context"],
+        "meta": ["task_complete", "switch_context", "pop_context", "ask_user"],
         "rectify": [
-            "file_read", "parse_training_log", "deep_dig", "tuner",
+            "file_read", "analyze_training", "tuner",
             "think", "switch_context", "pop_context",
             "ssh_exec", "cmd", "bash", "file_write",
             "grep", "glob_util", "experience_query", "experience_write",
-            "training_status", "file_edit",
+            "training_status", "file_edit", "ask_user",
         ],
         "training": [
             "file_read", "file_write", "ssh_exec", "cmd", "tail_log",
             "think", "switch_context", "pop_context",
         ],
         "env_setup": [
-            "file_read", "file_write", "ssh_exec", "cmd",
+            "file_read", "file_write", "ssh_exec",
+            "pop_context",
+        ],
+        "data_get": [
+            "ssh_exec", "scp_copy", "engine_call", "file_read",
             "switch_context", "pop_context",
+        ],
+        "rebuttal": [
+            "think", "pop_context",
         ],
     }
     all_tools = get_openai_tools()
@@ -645,6 +662,13 @@ def run_agent(task_description: str, control: Optional[Dict[str, Any]] = None) -
             if control is not None:
                 for extra in _drain_pending_user_inputs(control):
                     messages.append({"role": "user", "content": extra})
+
+                if active_ctx == "rectify" and control["_pending_rebuttal"] and not control["_rebuttal_reminder_injected"]:
+                    messages.append({
+                        "role": "user",
+                        "content": "[系统提醒] 你有未提交 rebuttal 的诊断结论。必须先 switch_context 到 rebuttal 验证后才能执行决策（包括不干预）。",
+                    })
+                    control["_rebuttal_reminder_injected"] = True
 
             ctx_size = get_context_size(messages)
             ctx_display = CTX_DISPLAY.get(active_ctx, active_ctx)
@@ -753,10 +777,6 @@ def run_agent(task_description: str, control: Optional[Dict[str, Any]] = None) -
 
             if not tool_call_deltas:
                 _append_agent_trace_log(debug_log_path, f"NO_TOOL_CALLS ctx={active_ctx}")
-                if control is not None and len(control["context_stack"]) > 1:
-                    control["context_stack"].pop()
-                    active_ctx = control["context_stack"][-1]
-                    messages = contexts[active_ctx]
                 continue
 
             for tc in msg_dict.get("tool_calls", []):

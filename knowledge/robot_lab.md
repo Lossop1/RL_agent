@@ -28,7 +28,7 @@ robot_lab/scripts/reinforcement_learning/
 - `rough_env_cfg.py` — 粗糙地形环境配置（含奖励权重）
 - `agents/` — RL 算法参数配置
 
-完整目录结构：
+目录结构：
 
 ```
 source/robot_lab/robot_lab/tasks/manager_based/locomotion/velocity/config/quadruped/

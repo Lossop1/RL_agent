@@ -19,15 +19,3 @@ def get_config() -> dict:
 def get_config_path() -> str:
     return _CURRENT_CONFIG_PATH
 
-
-# Backward-compatible aliases for existing tool code paths.
-def set_project(cfg: dict, cfg_path: str = "") -> None:
-    set_config(cfg, cfg_path)
-
-
-def get_project() -> dict:
-    return get_config()
-
-
-def get_project_path() -> str:
-    return get_config_path()

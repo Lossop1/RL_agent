@@ -41,7 +41,7 @@ meta → rectify → training
 ```
 
 - **meta** (`prompts/skills/meta.md`): 纯路由器。收到用户消息后立即 `switch_context` 到 `rectify`，不思考、不探查。
-- **rectify** (`prompts/skills/rectify.md`): 核心调参逻辑。加载知识库→启动训练→监控→parse_log + deep_dig→行为诊断→根因推断→tuner 修改权重→experience 记录→restart 训练。最多 20 轮。
+- **rectify** (`prompts/skills/rectify.md`): 核心调参逻辑。加载知识库→启动训练→监控→parse_log + deep_dig→行为诊断→根因推断→tuner 修改权重→restart 训练。最多 20 轮。
 - **training** (`prompts/skills/training.md`): 训练执行器。5 个分支：附着已有(A)、修复日志管道(B)、检查点恢复(C)、冷启动(D)、调参后重启(E)。只负责启动和日志显示，不做分析。
 - **env_setup** (`prompts/skills/env_setup.md`): 远程环境校验。SSH 连通性、conda 环境、工作目录、PyTorch 验证。结果缓存到 `state/env_state.json`(按 SSH 指纹索引)。
 
@@ -103,10 +103,6 @@ Agent 的禁止规则在 `prompts/rules/{agent_name}.md` 中定义（由 `contex
 - Holt-Winters 趋势预测（季节性周期=10）
 - Mann-Whitney U 调参前后对比
 
-## 经验库
-
-SQLite 数据库 `state/experience.db`，表 `training_records`。`experience_query` 支持按 run_id 查历史链条或按特征相似度查询（惩罚聚类匹配+focus_quality+error_vel_xy+entropy 加权评分）。
-
 ## 知识库
 
 - `knowledge/quadruped_diagnosis.md` — 指标→行为→根因→调参的完整知识图谱（冲突对、协同对、层级依赖、8 种行为问题模式、作弊检测）
@@ -131,14 +127,14 @@ SQLite 数据库 `state/experience.db`，表 `training_records`。`experience_qu
 
 ### 2. 简洁优先 (YAGNI)
 - 用最精简的代码完成我要求的事。
-- **不要** 添加任何我未要求的功能、选项或“灵活性”。
+- **不要** 添加任何我未要求的功能、选项或"灵活性"。
 - **不要** 为一次性代码创建抽象层。
 - **不要** 为几乎不可能发生的情况编写复杂的错误处理。
 - 如果你发现复杂代码可以大幅精简，提出来。
 
 ### 3. 精准修改
 - **只改动与我请求直接相关的代码。**
-- **不要** “顺便”改进、重构或重新格式化无关的代码。
+- **不要** "顺便"改进、重构或重新格式化无关的代码。
 - **不要** 修改或删除你不理解的现有注释。
 - **严格遵守** 项目现有的代码风格，即使你不喜欢。
 - 如果你的改动让某些旧代码变成死代码，提出来征求我的意见，不要自行删除。
