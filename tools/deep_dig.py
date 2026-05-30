@@ -156,6 +156,8 @@ def _clean_for_json(obj: Any) -> Any:
         return obj.to_dict()
     if isinstance(obj, (AnalysisStatus, AnalysisReason)):
         return obj.value
+    if isinstance(obj, (np.generic,)):
+        return obj.item()
     return obj
 
 # ============================================================
