@@ -6,6 +6,8 @@ config/ssh.json
 sessions/
 state/
 data/
+engine1/engine1_out/
+sim_data_get/my_play.txt
 __pycache__/
 *.pyc
 *.pyo
